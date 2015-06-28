@@ -19,9 +19,24 @@ module DistDB
         end
     end
 
-    def DistDB.read(node_urls, id)
-        #todo: only works with one node, need to make distributed!
-        Node.get_thing(node_urls[0], id)
+    def DistDB.read(node_urls,
+                    replication_factor,
+                    read_consistency,
+                    id)
+        things = []
+        node_urls.take(replication_factor).each { |node_url|
+            if things.length < read_consistency
+                begin
+                    things << Node.get_thing(node_url, id)
+                rescue Exception
+                    #ignore
+                end
+            end
+        }
+        if things.length < read_consistency
+            raise "Only read from #{things.length} nodes"
+        end
+        things.max_by { |thing| thing.timestamp }
     end
 end
 
