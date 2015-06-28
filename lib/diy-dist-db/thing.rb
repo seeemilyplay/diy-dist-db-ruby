@@ -1,7 +1,7 @@
 require 'date'
 
 class Thing
-    attr_accessor :timestamp
+    attr_accessor :timestamp, :value
 
     def initialize(id, value, timestamp=Time.now.to_i*1000)
         @id = id

@@ -19,6 +19,29 @@ module DistDB
         end
     end
 
+    def DistDB.resolve(things)
+        things.compact.max_by { |thing| thing.timestamp }
+    end
+
+    def DistDB.read_repair(node_urls,
+                           replication_factor,
+                           id)
+        things = node_urls.take(replication_factor).map { |node_url|
+            begin
+                Node.get_thing(node_url, id)
+            rescue Exception
+                nil
+            end
+        }
+        thing = resolve(things)
+        things.each_with_index { |current_thing, index|
+            # see if it's broken, and if it is fix it
+            if !current_thing || current_thing.value != thing.value
+                Node.put_thing(node_urls[index], thing)
+            end
+        }
+    end
+
     def DistDB.read(node_urls,
                     replication_factor,
                     read_consistency,
@@ -36,7 +59,8 @@ module DistDB
         if things.length < read_consistency
             raise "Only read from #{things.length} nodes"
         end
-        things.max_by { |thing| thing.timestamp }
+        DistDB.read_repair(node_urls, replication_factor, id)
+        DistDB.resolve(things)
     end
 end
 
